@@ -118,7 +118,7 @@ class HealthsitesImporter
       osm_id: facility_data['osm_id'],
       name: attributes['name'],
       facility_type: determine_facility_type(attributes),
-      location: "POINT(#{coordinates[1]} #{coordinates[0]})",
+      location: "POINT(#{coordinates[0]} #{coordinates[1]})",
       street: attributes['addr_street'],
       house_number: attributes['addr_housenumber'],
       city: attributes['addr_city'] || 'Vilnius',
