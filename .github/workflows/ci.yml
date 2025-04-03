@@ -120,7 +120,7 @@ jobs:
             "containerName": "rails-app",
             "containerPort": 3000,
             "healthCheck": {
-              "path": "/",
+              "path": "/up",
               "intervalSeconds": 15,
               "timeoutSeconds": 5,
               "healthyThreshold": 2,
