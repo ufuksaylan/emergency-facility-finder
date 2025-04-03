@@ -1,76 +1,118 @@
-name: CI
+name: Deploy Rails App to Lightsail
 
 on:
-  pull_request:
   push:
-    branches: [ main ]
+    branches:
+      - main # Trigger deployment only on pushes to the main branch
 
 jobs:
-  scan_ruby:
-    runs-on: ubuntu-latest
+  deploy:
+    runs-on: ubuntu-22.04
+    # Only run this job if pushing to the main branch
+    if: github.ref == 'refs/heads/main'
+
+    env:
+      # Define image tag using the Git SHA for uniqueness
+      RAILS_IMAGE_TAG: rails-app-${{ github.sha }}
 
     steps:
-      - name: Checkout code
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - name: Setup AWS CLI and lightsailctl
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
+          echo "Verifying AWS CLI install:"
+          which aws
+          aws --version
+          echo "Installing lightsailctl:"
+          sudo curl "https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl" -o "/usr/local/bin/lightsailctl"
+          sudo chmod +x /usr/local/bin/lightsailctl
+          echo "lightsailctl installed."
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          ruby-version: .ruby-version
-          bundler-cache: true
+          aws-region: ${{ vars.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Scan for common Rails security vulnerabilities using static analysis
-        run: bin/brakeman --no-pager
+      - name: Build Rails App Docker image
+        run: |
+          docker build \
+            -t ${{ env.RAILS_IMAGE_TAG }} \
+            -f ./Dockerfile .  # Assumes Dockerfile is at the root
 
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Push Rails App image to Lightsail
+        run: |
+          aws lightsail push-container-image \
+            --service-name ${{ vars.AWS_LIGHTSAIL_SERVICE }} \
+            --label ${{ env.RAILS_IMAGE_TAG }} \
+            --image ${{ env.RAILS_IMAGE_TAG }}
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
+      - name: Get Deployed Lightsail Image URI
+        id: get_image_uri # Give this step an ID to reference its output
+        run: |
+          # Get the full image URI (:service-name.image-label.N) needed for deployment
+          # Ensure jq is installed
+          sudo apt-get update && sudo apt-get install -y jq
+          LIGHTSAIL_IMAGE_URI=$(aws lightsail get-container-images --service-name ${{ vars.AWS_LIGHTSAIL_SERVICE }} | jq -r '.containerImages[] | select(.label == "${{ env.RAILS_IMAGE_TAG }}") | .image')
+          echo "Found image URI: $LIGHTSAIL_IMAGE_URI"
+          # Set the found URI as an output parameter for this step
+          echo "image_uri=$LIGHTSAIL_IMAGE_URI" >> $GITHUB_OUTPUT
 
-      - name: Lint code for consistent style
-        run: bin/rubocop -f github
-
-  test:
-    runs-on: ubuntu-latest
-
-    services:
-      mysql:
-        image: mysql
+      - name: Create containers.json for Deployment
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: true
-        ports:
-          - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+          # Make the image URI available as an environment variable in this step
+          LIGHTSAIL_RAILS_IMAGE: ${{ steps.get_image_uri.outputs.image_uri }}
+        run: |
+          echo '{
+            "rails-app": {
+              "image": "${{ env.LIGHTSAIL_RAILS_IMAGE }}",
+              "ports": {
+                "80": "HTTP"
+              },
+              "environment": {
+                "RAILS_ENV": "production",
+                "RAILS_LOG_TO_STDOUT": "true",
+                "RAILS_SERVE_STATIC_FILES": "true",
+                "PORT": "80",
+                "POSTGRES_HOST": "${{ secrets.LIGHTSAIL_NEON_DB_HOST }}",
+                "POSTGRES_PORT": "${{ vars.LIGHTSAIL_NEON_DB_PORT }}",
+                "POSTGRES_USERNAME": "${{ secrets.LIGHTSAIL_NEON_DB_USER }}",
+                "EMERGENCY_FACILITY_FINDER_DATABASE_PASSWORD": "${{ secrets.LIGHTSAIL_NEON_DB_PASSWORD }}",
+                "RAILS_MASTER_KEY": "${{ secrets.RAILS_MASTER_KEY }}",
+                "HEALTHSITES_API_KEY": "${{ secrets.HEALTHSITES_API_KEY }}",
+                "OSRM_HOST": "${{ secrets.OSRM_HOST }}",
+              }
+            }
+          }' > containers.json
+          echo "Created containers.json:"
+          cat containers.json
 
-      # redis:
-      #   image: redis
-      #   ports:
-      #     - 6379:6379
-      #   options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+      - name: Create public-endpoint.json for Deployment
+        run: |
+          echo '{
+            "containerName": "rails-app",
+            "containerPort": 80,
+            "healthCheck": {
+              "path": "/",
+              "intervalSeconds": 15,
+              "timeoutSeconds": 5,
+              "healthyThreshold": 2,
+              "unhealthyThreshold": 3,
+              "successCodes": "200-399"
+            }
+          }' > public-endpoint.json
+          echo "Created public-endpoint.json:"
+          cat public-endpoint.json
 
-    steps:
-      - name: Install packages
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y google-chrome-stable curl default-mysql-client libjemalloc2 libvips
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-
-      - name: Run tests
-        env:
-          RAILS_ENV: test
-          DATABASE_URL: mysql2://127.0.0.1:3306
-          # REDIS_URL: redis://localhost:6379/0
-        run: bin/rails db:test:prepare test
+      - name: Deploy to AWS Lightsail Container Service
+        run: |
+          aws lightsail create-container-service-deployment \
+            --service-name ${{ vars.AWS_LIGHTSAIL_SERVICE }} \
+            --containers file://containers.json \
+            --public-endpoint file://public-endpoint.json
+          echo "Deployment initiated."

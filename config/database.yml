@@ -54,7 +54,7 @@ production:
   primary: &primary_production
     <<: *default
     database: emergency_facility_finder_production
-    username: emergency_facility_finder
+    username: <%= ENV.fetch("POSTGRES_USERNAME") %>
     password: <%= ENV["EMERGENCY_FACILITY_FINDER_DATABASE_PASSWORD"] %>
   cache:
     <<: *primary_production
