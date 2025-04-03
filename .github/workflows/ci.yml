@@ -94,13 +94,13 @@ jobs:
             "rails-app": {
               "image": "${{ env.LIGHTSAIL_RAILS_IMAGE }}",
               "ports": {
-                "80": "HTTP"
+                "3000": "HTTP"
               },
               "environment": {
                 "RAILS_ENV": "production",
                 "RAILS_LOG_TO_STDOUT": "true",
                 "RAILS_SERVE_STATIC_FILES": "true",
-                "PORT": "80",
+                "PORT": "3000",
                 "POSTGRES_HOST": "${{ secrets.LIGHTSAIL_NEON_DB_HOST }}",
                 "POSTGRES_PORT": "${{ vars.LIGHTSAIL_NEON_DB_PORT }}",
                 "POSTGRES_USERNAME": "${{ secrets.LIGHTSAIL_NEON_DB_USER }}",
