@@ -87,7 +87,7 @@ jobs:
 
       - name: Create containers.json for Deployment
         env:
-          # Make the image URI available as an environment variable in this step
+          # Make the image URI available as an environment variable in this stepp
           LIGHTSAIL_RAILS_IMAGE: ${{ steps.get_image_uri.outputs.image_uri }}
         run: |
           echo '{
