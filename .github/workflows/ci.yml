@@ -85,7 +85,7 @@ jobs:
                 "EMERGENCY_FACILITY_FINDER_DATABASE_PASSWORD": "${{ secrets.LIGHTSAIL_NEON_DB_PASSWORD }}",
                 "RAILS_MASTER_KEY": "${{ secrets.RAILS_MASTER_KEY }}",
                 "HEALTHSITES_API_KEY": "${{ secrets.HEALTHSITES_API_KEY }}",
-                "OSRM_HOST": "${{ secrets.OSRM_HOST }}",
+                "OSRM_HOST": "${{ secrets.OSRM_HOST }}"
               }
             }
           }' > containers.json
