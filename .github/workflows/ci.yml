@@ -68,7 +68,8 @@ jobs:
           echo "--- End raw output ---"
 
           # Try to extract the specific image URI using jq
-          LIGHTSAIL_IMAGE_URI=$(jq -r '.containerImages[] | select(.label == "${{ env.RAILS_IMAGE_TAG }}") | .image' images_output.json)
+          # Use contains() to check the image string instead of a non-existent label field
+          LIGHTSAIL_IMAGE_URI=$(jq -r '.containerImages[] | select(.image | contains("${{ env.RAILS_IMAGE_TAG }}")) | .image' images_output.json)
 
           echo "JQ extracted image URI: $LIGHTSAIL_IMAGE_URI"
 
