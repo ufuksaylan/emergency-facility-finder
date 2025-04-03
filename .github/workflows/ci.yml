@@ -53,7 +53,7 @@ jobs:
             --image ${{ env.RAILS_IMAGE_TAG }}
 
       - name: Get Deployed Lightsail Image URI
-        id: get_image_uri # Give this step an ID to reference its output
+        id: get_image_uri # Give this step an ID to reference its outputt
         run: |
           # Get the full image URI (:service-name.image-label.N) needed for deployment
           # Ensure jq is installed
