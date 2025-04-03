@@ -58,10 +58,31 @@ jobs:
           # Get the full image URI (:service-name.image-label.N) needed for deployment
           # Ensure jq is installed
           sudo apt-get update && sudo apt-get install -y jq
-          LIGHTSAIL_IMAGE_URI=$(aws lightsail get-container-images --service-name ${{ vars.AWS_LIGHTSAIL_SERVICE }} | jq -r '.containerImages[] | select(.label == "${{ env.RAILS_IMAGE_TAG }}") | .image')
-          echo "Found image URI: $LIGHTSAIL_IMAGE_URI"
+
+          echo "Attempting to find image with label: ${{ env.RAILS_IMAGE_TAG }}"
+          echo "Running: aws lightsail get-container-images --service-name ${{ vars.AWS_LIGHTSAIL_SERVICE }}"
+          # Print raw output for debugging
+          aws lightsail get-container-images --service-name ${{ vars.AWS_LIGHTSAIL_SERVICE }} > images_output.json
+          echo "--- Raw get-container-images output: ---"
+          cat images_output.json
+          echo "--- End raw output ---"
+
+          # Try to extract the specific image URI using jq
+          LIGHTSAIL_IMAGE_URI=$(jq -r '.containerImages[] | select(.label == "${{ env.RAILS_IMAGE_TAG }}") | .image' images_output.json)
+
+          echo "JQ extracted image URI: $LIGHTSAIL_IMAGE_URI"
+
+          # Check if the URI is empty and fail if it is
+          if [ -z "$LIGHTSAIL_IMAGE_URI" ]; then
+            echo "ERROR: Failed to find image URI for label ${{ env.RAILS_IMAGE_TAG }}. Check push step and label matching."
+            exit 1
+          fi
+
           # Set the found URI as an output parameter for this step
+          echo "Setting output image_uri=$LIGHTSAIL_IMAGE_URI"
           echo "image_uri=$LIGHTSAIL_IMAGE_URI" >> $GITHUB_OUTPUT
+
+
 
       - name: Create containers.json for Deployment
         env:
