@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_03_29_123528) do
+ActiveRecord::Schema[8.0].define(version: 2025_04_07_191618) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -31,6 +31,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_29_123528) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.geography "location", limit: {:srid=>4326, :type=>"st_point", :geographic=>true}
+    t.string "website"
+    t.string "email"
     t.index ["facility_type"], name: "index_facilities_on_facility_type"
     t.index ["location"], name: "index_facilities_on_location", using: :gist
     t.index ["osm_id"], name: "index_facilities_on_osm_id", unique: true
@@ -48,6 +50,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_29_123528) do
     t.index ["facility_id"], name: "index_facility_details_on_facility_id", unique: true
   end
 
+  create_table "facility_specialties", force: :cascade do |t|
+    t.bigint "facility_id", null: false
+    t.bigint "specialty_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["facility_id"], name: "index_facility_specialties_on_facility_id"
+    t.index ["specialty_id"], name: "index_facility_specialties_on_specialty_id"
+  end
+
   create_table "osm_metadata", force: :cascade do |t|
     t.bigint "facility_id", null: false
     t.bigint "changeset_id"
@@ -59,6 +70,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_29_123528) do
     t.index ["facility_id"], name: "index_osm_metadata_on_facility_id", unique: true
   end
 
+  create_table "specialties", force: :cascade do |t|
+    t.string "name"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_specialties_on_name", unique: true
+  end
+
   add_foreign_key "facility_details", "facilities"
+  add_foreign_key "facility_specialties", "facilities"
+  add_foreign_key "facility_specialties", "specialties"
   add_foreign_key "osm_metadata", "facilities"
 end
