@@ -3,7 +3,6 @@ class Admin::UsersController < Admin::BaseController
   # Skip authentication for the create (registration) action
   skip_before_action :authenticate_admin_request!, only: [:create]
 
-  # POST /admin/register
   def create
     user = User.new(user_params)
 
