@@ -5,6 +5,7 @@ Rails.application.routes.draw do
     post "/login", to: "authentication#login"
     get "/dashboard", to: "dashboard#index"
     post "/register", to: "users#create"
+    resources :facilities, param: :osm_id
     # Example: Route to get current admin user info
   end
 
