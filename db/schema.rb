@@ -10,10 +10,22 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_09_074819) do
+ActiveRecord::Schema[8.0].define(version: 2025_04_09_141116) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
+
+  create_table "complaints", force: :cascade do |t|
+    t.bigint "facility_id", null: false
+    t.text "description", null: false
+    t.string "status", default: "submitted", null: false
+    t.text "resolution_notes"
+    t.datetime "resolved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["facility_id"], name: "index_complaints_on_facility_id"
+    t.index ["status"], name: "index_complaints_on_status"
+  end
 
   create_table "facilities", force: :cascade do |t|
     t.bigint "osm_id", null: false
@@ -86,6 +98,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_09_074819) do
     t.index ["email"], name: "index_users_on_email"
   end
 
+  add_foreign_key "complaints", "facilities"
   add_foreign_key "facility_details", "facilities"
   add_foreign_key "facility_specialties", "facilities"
   add_foreign_key "facility_specialties", "specialties"

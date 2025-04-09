@@ -4,6 +4,7 @@ class Facility < ApplicationRecord
 
   has_many :facility_specialties, dependent: :destroy
   has_many :specialties, through: :facility_specialties
+  has_many :complaints, dependent: :destroy
 
   validates :osm_id, presence: true, uniqueness: true
 
