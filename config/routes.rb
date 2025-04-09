@@ -11,6 +11,7 @@ Rails.application.routes.draw do
   end
 
   resources :facilities, only: [ :index ]
+  resources :specialties, only: [ :index ]
 
   get "/route/v1/:profile/*osrm_path",
       to: "osrm_proxy#route",
