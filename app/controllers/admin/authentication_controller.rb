@@ -3,9 +3,12 @@ class Admin::AuthenticationController < Admin::BaseController
 
   # POST /admin/login
   def login
-    user = User.find_by(email: params[:email])
+    email = params[:email] || params.dig(:authentication, :email)
+    password = params[:password] || params.dig(:authentication, :password)
 
-    if user&.authenticate(params[:password])
+    user = User.find_by(email: email)
+
+    if user&.authenticate(password)
       issue_token(user)
     else
       render_unauthorized("Invalid email or password")
@@ -18,6 +21,8 @@ class Admin::AuthenticationController < Admin::BaseController
     payload = { user_id: user.id, email: user.email, issued_at: Time.now.to_i }
     token = JsonWebToken.encode(payload)
     decoded_token = JsonWebToken.decode(token)
+
+    exp_time = decoded_token && decoded_token[:exp]
 
     render json: { token: token, exp: decoded_token[:exp], user: { id: user.id, email: user.email } }, status: :ok
   end
